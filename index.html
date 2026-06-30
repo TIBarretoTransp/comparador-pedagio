@@ -5,16 +5,16 @@
 <title>Comparador de Pedágio — Google Maps x QualP</title>
 <style>
   :root{
-    --bg:#0f1418;
-    --panel:#161d23;
-    --panel2:#1c252c;
-    --border:#2a343c;
-    --text:#e7edf1;
-    --muted:#8a99a3;
-    --accent:#3ea6ff;
-    --accent2:#ffb454;
-    --ok:#39d98a;
-    --bad:#ff6b6b;
+    --bg:#f4f6f8;
+    --panel:#ffffff;
+    --panel2:#f0f3f6;
+    --border:#d8dee3;
+    --text:#1c2630;
+    --muted:#5d6b77;
+    --accent:#1565d8;
+    --accent2:#b9690a;
+    --ok:#1a9e63;
+    --bad:#d8362a;
     --mono: 'SF Mono','Consolas','Menlo',monospace;
   }
   *{box-sizing:border-box;}
@@ -51,6 +51,7 @@
     border:1px solid var(--border);
     border-radius:10px;
     padding:16px;
+    box-shadow:0 1px 3px rgba(28,38,48,0.06);
   }
   .panel h2{
     font-size:13px;
@@ -78,7 +79,7 @@
     font-size:13px;
     font-family:var(--mono);
   }
-  input::placeholder{color:#566169;}
+  input::placeholder{color:#9aa6af;}
   .row2{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -100,13 +101,13 @@
   }
   .btn-primary{
     background:var(--accent);
-    color:#06121c;
+    color:#ffffff;
     width:100%;
   }
-  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:hover{filter:brightness(1.1);}
   .btn-primary:disabled{
-    background:#33414a;
-    color:var(--muted);
+    background:#c3cbd2;
+    color:#7a848c;
     cursor:not-allowed;
   }
   .btn-secondary{
@@ -117,10 +118,10 @@
   .btn-secondary:hover{border-color:var(--accent);}
   .btn-danger{
     background:transparent;
-    border:1px solid #4a2a2a;
+    border:1px solid #e3b4af;
     color:var(--bad);
   }
-  .btn-danger:hover{background:#2a1414;}
+  .btn-danger:hover{background:#fbeae8;}
   .status{
     margin-top:10px;
     font-size:12px;
@@ -263,28 +264,12 @@
     <label>Apelido da rota (ex: Itapeva → Sorocaba)</label>
     <input type="text" id="rotaNome" placeholder="Origem → Destino">
 
-    <div class="row2">
-      <div>
-        <label>Origem — Latitude</label>
-        <input type="text" id="origLat" placeholder="-23.9836">
-      </div>
-      <div>
-        <label>Origem — Longitude</label>
-        <input type="text" id="origLng" placeholder="-48.8792">
-      </div>
-    </div>
+    <label>Cidade de origem</label>
+    <input type="text" id="origCidade" placeholder="Itapeva, SP">
 
-    <div class="row2">
-      <div>
-        <label>Destino — Latitude</label>
-        <input type="text" id="destLat" placeholder="-23.5015">
-      </div>
-      <div>
-        <label>Destino — Longitude</label>
-        <input type="text" id="destLng" placeholder="-47.4526">
-      </div>
-    </div>
-    <div class="hint">Use coordenadas (não endereço) para evitar que a API escolha um ponto de entrada diferente do esperado. Pegue no Google Maps: clique com botão direito no ponto → copia as coordenadas.</div>
+    <label>Cidade de destino</label>
+    <input type="text" id="destCidade" placeholder="Sorocaba, SP">
+    <div class="hint">Inclua o estado (ex: "Itapeva, SP") para evitar ambiguidade com cidades de mesmo nome em outros estados. O Google usa o centro da cidade como ponto de referência.</div>
 
     <button class="btn-primary" id="consultarBtn">Consultar pedágio no Google Maps</button>
     <div class="status" id="status"></div>
@@ -378,17 +363,15 @@ function parseBRLInput(str){
 // --- Google Routes API call ---
 document.getElementById('consultarBtn').addEventListener('click', async () => {
   const apiKey = apiKeyInput.value.trim();
-  const origLat = parseFloat(document.getElementById('origLat').value);
-  const origLng = parseFloat(document.getElementById('origLng').value);
-  const destLat = parseFloat(document.getElementById('destLat').value);
-  const destLng = parseFloat(document.getElementById('destLng').value);
+  const origCidade = document.getElementById('origCidade').value.trim();
+  const destCidade = document.getElementById('destCidade').value.trim();
 
   if (!apiKey){
     setStatus('Cole sua API key do Google Maps primeiro.', 'error');
     return;
   }
-  if ([origLat, origLng, destLat, destLng].some(v => isNaN(v))){
-    setStatus('Preencha origem e destino com coordenadas válidas (lat/lng).', 'error');
+  if (!origCidade || !destCidade){
+    setStatus('Preencha cidade de origem e destino.', 'error');
     return;
   }
 
@@ -399,8 +382,8 @@ document.getElementById('consultarBtn').addEventListener('click', async () => {
 
   try {
     const body = {
-      origin: { location: { latLng: { latitude: origLat, longitude: origLng } } },
-      destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+      origin: { address: origCidade },
+      destination: { address: destCidade },
       travelMode: "DRIVE",
       routingPreference: "TRAFFIC_AWARE",
       extraComputations: ["TOLLS"],
@@ -430,7 +413,7 @@ document.getElementById('consultarBtn').addEventListener('click', async () => {
     }
 
     if (!data.routes || data.routes.length === 0){
-      setStatus('Nenhuma rota encontrada para essas coordenadas.', 'error');
+      setStatus('Nenhuma rota encontrada para essas cidades. Tente incluir o estado (ex: "Itapeva, SP").', 'error');
       btn.disabled = false;
       return;
     }
@@ -460,8 +443,8 @@ document.getElementById('consultarBtn').addEventListener('click', async () => {
     }
 
     lastGoogleResult = {
-      rotaNome: document.getElementById('rotaNome').value.trim() || '(sem nome)',
-      origLat, origLng, destLat, destLng,
+      rotaNome: document.getElementById('rotaNome').value.trim() || `${origCidade} → ${destCidade}`,
+      origCidade, destCidade,
       distanceKm, durationFmt,
       qtdPedagios: tollItems.length,
       valorGoogle: totalValor,
@@ -531,10 +514,8 @@ document.getElementById('addRowBtn').addEventListener('click', () => {
   // reset form for next test
   document.getElementById('resultBox').classList.remove('show');
   document.getElementById('rotaNome').value = '';
-  document.getElementById('origLat').value = '';
-  document.getElementById('origLng').value = '';
-  document.getElementById('destLat').value = '';
-  document.getElementById('destLng').value = '';
+  document.getElementById('origCidade').value = '';
+  document.getElementById('destCidade').value = '';
   lastGoogleResult = null;
 });
 
