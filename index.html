@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Comparador de Pedágio — Google Maps x QualP</title>
+<style>
+  :root{
+    --bg:#0f1418;
+    --panel:#161d23;
+    --panel2:#1c252c;
+    --border:#2a343c;
+    --text:#e7edf1;
+    --muted:#8a99a3;
+    --accent:#3ea6ff;
+    --accent2:#ffb454;
+    --ok:#39d98a;
+    --bad:#ff6b6b;
+    --mono: 'SF Mono','Consolas','Menlo',monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    margin:0;
+    padding:24px;
+    line-height:1.4;
+  }
+  h1{
+    font-size:18px;
+    font-weight:700;
+    margin:0 0 2px 0;
+    letter-spacing:0.2px;
+  }
+  .subtitle{
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:20px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap:16px;
+    align-items:start;
+  }
+  @media (max-width: 900px){
+    .grid{grid-template-columns: 1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+  }
+  .panel h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    color:var(--muted);
+    margin:0 0 12px 0;
+    font-weight:600;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:4px;
+    margin-top:10px;
+  }
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=number]{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+    font-size:13px;
+    font-family:var(--mono);
+  }
+  input::placeholder{color:#566169;}
+  .row2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  button{
+    border:none;
+    border-radius:6px;
+    padding:9px 16px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:14px;
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#06121c;
+    width:100%;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:disabled{
+    background:#33414a;
+    color:var(--muted);
+    cursor:not-allowed;
+  }
+  .btn-secondary{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text);
+  }
+  .btn-secondary:hover{border-color:var(--accent);}
+  .btn-danger{
+    background:transparent;
+    border:1px solid #4a2a2a;
+    color:var(--bad);
+  }
+  .btn-danger:hover{background:#2a1414;}
+  .status{
+    margin-top:10px;
+    font-size:12px;
+    min-height:16px;
+  }
+  .status.loading{color:var(--accent2);}
+  .status.error{color:var(--bad);}
+  .status.ok{color:var(--ok);}
+  .resultBox{
+    margin-top:14px;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px;
+    font-size:13px;
+    display:none;
+  }
+  .resultBox.show{display:block;}
+  .resultRow{
+    display:flex;
+    justify-content:space-between;
+    padding:4px 0;
+    border-bottom:1px dashed var(--border);
+  }
+  .resultRow:last-child{border-bottom:none;}
+  .resultRow span:first-child{color:var(--muted);}
+  .resultRow span:last-child{font-family:var(--mono);}
+  .tollList{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--muted);
+    font-family:var(--mono);
+  }
+  .tollList div{padding:2px 0;}
+  .qualpInputs{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+  .addBtnRow{
+    display:flex;
+    gap:8px;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    margin-top:8px;
+  }
+  th, td{
+    text-align:left;
+    padding:8px 8px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  th{
+    color:var(--muted);
+    font-weight:600;
+    text-transform:uppercase;
+    font-size:10px;
+    letter-spacing:0.4px;
+  }
+  td.num{font-family:var(--mono); text-align:right;}
+  .diffPos{color:var(--bad);}
+  .diffNeg{color:var(--ok);}
+  .diffZero{color:var(--muted);}
+  .tableWrap{
+    overflow-x:auto;
+    margin-top:10px;
+  }
+  .empty{
+    color:var(--muted);
+    font-size:12px;
+    padding:20px 0;
+    text-align:center;
+  }
+  .delRow{
+    cursor:pointer;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .delRow:hover{color:var(--bad);}
+  .summaryBar{
+    display:flex;
+    gap:18px;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+    font-size:12px;
+    flex-wrap:wrap;
+  }
+  .summaryItem .val{
+    font-family:var(--mono);
+    font-size:16px;
+    font-weight:700;
+    display:block;
+  }
+  .summaryItem .lbl{color:var(--muted); font-size:11px;}
+  .apikeyRow{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .apikeyRow input{flex:1;}
+  .smallNote{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:14px;
+    line-height:1.5;
+  }
+  select{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+    font-size:13px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Comparador de Pedágio — Google Routes API × QualP</h1>
+<div class="subtitle">Tarifa básica (categoria 1, eixo simples) · cada teste vira uma linha na tabela abaixo</div>
+
+<div class="grid">
+
+  <!-- LEFT: form -->
+  <div class="panel">
+    <h2>1. Consultar rota no Google</h2>
+
+    <label>API Key do Google Maps</label>
+    <div class="apikeyRow">
+      <input type="text" id="apiKey" placeholder="AIza...">
+      <button class="btn-secondary" id="saveKeyBtn" style="margin-top:0;">Salvar</button>
+    </div>
+    <div class="hint">Fica salva apenas no seu navegador (localStorage), não é enviada a mais ninguém.</div>
+
+    <label>Apelido da rota (ex: Itapeva → Sorocaba)</label>
+    <input type="text" id="rotaNome" placeholder="Origem → Destino">
+
+    <div class="row2">
+      <div>
+        <label>Origem — Latitude</label>
+        <input type="text" id="origLat" placeholder="-23.9836">
+      </div>
+      <div>
+        <label>Origem — Longitude</label>
+        <input type="text" id="origLng" placeholder="-48.8792">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label>Destino — Latitude</label>
+        <input type="text" id="destLat" placeholder="-23.5015">
+      </div>
+      <div>
+        <label>Destino — Longitude</label>
+        <input type="text" id="destLng" placeholder="-47.4526">
+      </div>
+    </div>
+    <div class="hint">Use coordenadas (não endereço) para evitar que a API escolha um ponto de entrada diferente do esperado. Pegue no Google Maps: clique com botão direito no ponto → copia as coordenadas.</div>
+
+    <button class="btn-primary" id="consultarBtn">Consultar pedágio no Google Maps</button>
+    <div class="status" id="status"></div>
+
+    <div class="resultBox" id="resultBox">
+      <div class="resultRow"><span>Distância</span><span id="resDist">—</span></div>
+      <div class="resultRow"><span>Duração</span><span id="resDur">—</span></div>
+      <div class="resultRow"><span>Qtd. pedágios encontrados</span><span id="resQtd">—</span></div>
+      <div class="resultRow"><span>Valor total (Google)</span><span id="resValor">—</span></div>
+      <div class="tollList" id="tollList"></div>
+
+      <div class="qualpInputs">
+        <label>Valor total QualP (R$) — tarifa básica, mesma rota</label>
+        <input type="text" id="qualpValor" placeholder="0,00">
+        <label>Qtd. de pedágios no QualP (opcional)</label>
+        <input type="text" id="qualpQtd" placeholder="ex: 3">
+        <div class="addBtnRow">
+          <button class="btn-primary" id="addRowBtn">Adicionar à tabela comparativa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: table -->
+  <div class="panel">
+    <h2>2. Tabela comparativa</h2>
+    <div id="tableContainer">
+      <div class="empty">Nenhum teste adicionado ainda. Consulte uma rota ao lado e preencha o valor do QualP.</div>
+    </div>
+
+    <div class="summaryBar" id="summaryBar" style="display:none;">
+      <div class="summaryItem">
+        <span class="val" id="sumTotal">0</span>
+        <span class="lbl">testes</span>
+      </div>
+      <div class="summaryItem">
+        <span class="val" id="sumBatem">0</span>
+        <span class="lbl">batendo (±R$1)</span>
+      </div>
+      <div class="summaryItem">
+        <span class="val" id="sumMediaDiff">—</span>
+        <span class="lbl">diferença média</span>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <button class="btn-secondary" id="exportBtn">Exportar CSV</button>
+      <button class="btn-danger" id="clearBtn">Limpar tabela</button>
+    </div>
+
+    <div class="smallNote">
+      Diferença = Google − QualP. Valor positivo (vermelho) significa que o Google está cobrando mais caro que o QualP nessa rota; negativo (verde), o contrário.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'pedagio_comparador_rows_v1';
+const APIKEY_STORAGE = 'pedagio_comparador_apikey_v1';
+
+let rows = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let lastGoogleResult = null;
+
+// --- API key persistence ---
+const apiKeyInput = document.getElementById('apiKey');
+apiKeyInput.value = localStorage.getItem(APIKEY_STORAGE) || '';
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+  localStorage.setItem(APIKEY_STORAGE, apiKeyInput.value.trim());
+  setStatus('API key salva neste navegador.', 'ok');
+});
+
+function setStatus(msg, type){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+function formatBRL(v){
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function parseBRLInput(str){
+  if (!str) return null;
+  const cleaned = str.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3},)/g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+// --- Google Routes API call ---
+document.getElementById('consultarBtn').addEventListener('click', async () => {
+  const apiKey = apiKeyInput.value.trim();
+  const origLat = parseFloat(document.getElementById('origLat').value);
+  const origLng = parseFloat(document.getElementById('origLng').value);
+  const destLat = parseFloat(document.getElementById('destLat').value);
+  const destLng = parseFloat(document.getElementById('destLng').value);
+
+  if (!apiKey){
+    setStatus('Cole sua API key do Google Maps primeiro.', 'error');
+    return;
+  }
+  if ([origLat, origLng, destLat, destLng].some(v => isNaN(v))){
+    setStatus('Preencha origem e destino com coordenadas válidas (lat/lng).', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('consultarBtn');
+  btn.disabled = true;
+  setStatus('Consultando Google Routes API...', 'loading');
+  document.getElementById('resultBox').classList.remove('show');
+
+  try {
+    const body = {
+      origin: { location: { latLng: { latitude: origLat, longitude: origLng } } },
+      destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+      travelMode: "DRIVE",
+      routingPreference: "TRAFFIC_AWARE",
+      extraComputations: ["TOLLS"],
+      routeModifiers: {
+        vehicleInfo: { emissionType: "GASOLINE" },
+        tollPasses: []
+      }
+    };
+
+    const resp = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok){
+      const msg = data && data.error && data.error.message ? data.error.message : 'Erro desconhecido na API.';
+      setStatus('Erro: ' + msg, 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    if (!data.routes || data.routes.length === 0){
+      setStatus('Nenhuma rota encontrada para essas coordenadas.', 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    const route = data.routes[0];
+    const distanceKm = (route.distanceMeters / 1000).toFixed(1);
+    const durationSec = parseInt(route.duration);
+    const durationMin = Math.round(durationSec / 60);
+    const durationFmt = durationMin >= 60
+      ? `${Math.floor(durationMin/60)}h${String(durationMin%60).padStart(2,'0')}`
+      : `${durationMin} min`;
+
+    const tollInfo = route.travelAdvisory && route.travelAdvisory.tollInfo;
+    let tollItems = [];
+    let totalValor = 0;
+    let moeda = 'BRL';
+
+    if (tollInfo && tollInfo.estimatedPrice && tollInfo.estimatedPrice.length > 0){
+      tollInfo.estimatedPrice.forEach(p => {
+        const units = parseInt(p.units || 0);
+        const nanos = (p.nanos || 0) / 1e9;
+        const valor = units + nanos;
+        totalValor += valor;
+        moeda = p.currencyCode || 'BRL';
+        tollItems.push(valor);
+      });
+    }
+
+    lastGoogleResult = {
+      rotaNome: document.getElementById('rotaNome').value.trim() || '(sem nome)',
+      origLat, origLng, destLat, destLng,
+      distanceKm, durationFmt,
+      qtdPedagios: tollItems.length,
+      valorGoogle: totalValor,
+      moeda
+    };
+
+    document.getElementById('resDist').textContent = distanceKm + ' km';
+    document.getElementById('resDur').textContent = durationFmt;
+    document.getElementById('resQtd').textContent = tollItems.length;
+    document.getElementById('resValor').textContent = tollItems.length > 0 ? formatBRL(totalValor) : 'Sem pedágio detectado';
+
+    const tollListEl = document.getElementById('tollList');
+    tollListEl.innerHTML = '';
+    if (tollItems.length > 0){
+      tollItems.forEach((v, i) => {
+        const d = document.createElement('div');
+        d.textContent = `Praça ${i+1}: ${formatBRL(v)}`;
+        tollListEl.appendChild(d);
+      });
+    } else {
+      tollListEl.innerHTML = '<div>Nenhum pedágio retornado pela API para esta rota (pode ser falta de cobertura, ou rota realmente livre de pedágio).</div>';
+    }
+
+    document.getElementById('qualpValor').value = '';
+    document.getElementById('qualpQtd').value = '';
+    document.getElementById('resultBox').classList.add('show');
+    setStatus('Consulta concluída.', 'ok');
+
+  } catch (err){
+    setStatus('Falha na requisição: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Add row to comparison table ---
+document.getElementById('addRowBtn').addEventListener('click', () => {
+  if (!lastGoogleResult){
+    setStatus('Consulte uma rota no Google primeiro.', 'error');
+    return;
+  }
+  const qualpValorRaw = document.getElementById('qualpValor').value;
+  const qualpValor = parseBRLInput(qualpValorRaw);
+  if (qualpValor === null){
+    setStatus('Preencha o valor do QualP para adicionar à tabela.', 'error');
+    return;
+  }
+  const qualpQtd = document.getElementById('qualpQtd').value.trim();
+
+  const diff = lastGoogleResult.valorGoogle - qualpValor;
+
+  rows.push({
+    id: Date.now(),
+    rota: lastGoogleResult.rotaNome,
+    distanceKm: lastGoogleResult.distanceKm,
+    qtdGoogle: lastGoogleResult.qtdPedagios,
+    valorGoogle: lastGoogleResult.valorGoogle,
+    qtdQualp: qualpQtd || '—',
+    valorQualp: qualpValor,
+    diff: diff
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  renderTable();
+  setStatus('Linha adicionada à tabela comparativa.', 'ok');
+
+  // reset form for next test
+  document.getElementById('resultBox').classList.remove('show');
+  document.getElementById('rotaNome').value = '';
+  document.getElementById('origLat').value = '';
+  document.getElementById('origLng').value = '';
+  document.getElementById('destLat').value = '';
+  document.getElementById('destLng').value = '';
+  lastGoogleResult = null;
+});
+
+function renderTable(){
+  const container = document.getElementById('tableContainer');
+  const summaryBar = document.getElementById('summaryBar');
+
+  if (rows.length === 0){
+    container.innerHTML = '<div class="empty">Nenhum teste adicionado ainda. Consulte uma rota ao lado e preencha o valor do QualP.</div>';
+    summaryBar.style.display = 'none';
+    return;
+  }
+
+  let html = `<div class="tableWrap"><table>
+    <thead><tr>
+      <th>Rota</th>
+      <th>Km</th>
+      <th>Qtd Google</th>
+      <th class="num">Valor Google</th>
+      <th>Qtd QualP</th>
+      <th class="num">Valor QualP</th>
+      <th class="num">Diferença</th>
+      <th></th>
+    </tr></thead><tbody>`;
+
+  rows.forEach(r => {
+    const diffClass = Math.abs(r.diff) < 1 ? 'diffZero' : (r.diff > 0 ? 'diffPos' : 'diffNeg');
+    const diffLabel = (r.diff > 0 ? '+' : '') + formatBRL(r.diff);
+    html += `<tr>
+      <td>${escapeHtml(r.rota)}</td>
+      <td>${r.distanceKm}</td>
+      <td>${r.qtdGoogle}</td>
+      <td class="num">${formatBRL(r.valorGoogle)}</td>
+      <td>${escapeHtml(String(r.qtdQualp))}</td>
+      <td class="num">${formatBRL(r.valorQualp)}</td>
+      <td class="num ${diffClass}">${diffLabel}</td>
+      <td class="delRow" onclick="removeRow(${r.id})" title="Remover">✕</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+
+  // summary
+  const total = rows.length;
+  const batem = rows.filter(r => Math.abs(r.diff) < 1).length;
+  const mediaDiff = rows.reduce((acc, r) => acc + r.diff, 0) / total;
+
+  document.getElementById('sumTotal').textContent = total;
+  document.getElementById('sumBatem').textContent = batem;
+  document.getElementById('sumMediaDiff').textContent = (mediaDiff > 0 ? '+' : '') + formatBRL(mediaDiff);
+  summaryBar.style.display = 'flex';
+}
+
+function removeRow(id){
+  rows = rows.filter(r => r.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  renderTable();
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (rows.length === 0) return;
+  if (confirm('Tem certeza que deseja apagar todos os testes da tabela?')){
+    rows = [];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    renderTable();
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (rows.length === 0) return;
+  let csv = 'Rota;Distancia (km);Qtd Google;Valor Google;Qtd QualP;Valor QualP;Diferenca\n';
+  rows.forEach(r => {
+    csv += `${r.rota};${r.distanceKm};${r.qtdGoogle};${r.valorGoogle.toFixed(2)};${r.qtdQualp};${r.valorQualp.toFixed(2)};${r.diff.toFixed(2)}\n`;
+  });
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'comparativo_pedagio.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+renderTable();
+</script>
+
+</body>
+</html>
